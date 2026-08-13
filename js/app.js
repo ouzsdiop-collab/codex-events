@@ -8,8 +8,9 @@ import home from './modules/home.js';
 import preflop from './modules/preflop.js';
 import table from './modules/table.js';
 import analyzer from './modules/analyzer.js';
+import strategy from './modules/strategy.js';
 
-const MODULES = [home, preflop, table, analyzer];
+const MODULES = [home, preflop, table, analyzer, strategy];
 const state = loadState();
 const ctx = { state, save: () => saveState(state) };
 

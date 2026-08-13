@@ -8,7 +8,7 @@ import { decideBot, STYLES, chenScore } from '../core/bot.js';
 import { handNotation, parseRange } from '../core/notation.js';
 import { RFI } from '../data/ranges.js';
 import { equityMonteCarlo } from '../core/equity.js';
-import { recordTableHand } from '../core/storage.js';
+import { recordTableMetrics } from '../core/storage.js';
 import { cardsHTML, cardBackHTML, el, pct } from '../ui/render.js';
 
 // Ancrages écran (en %) pour 6 sièges — le héros est toujours en bas au centre.
@@ -33,6 +33,8 @@ export default {
     let heroStartStack = 100;
     let heroFirstPreflopAction = null; // pour l'analyse
     let heroHoleNotation = null;
+    // Trackers de métriques pour la main courante
+    let mVPIP = false, mPFR = false, mPostBets = 0, mPostCalls = 0;
 
     // Construit les joueurs (héros + 5 bots)
     const names = ['Toi', 'Bot Léo', 'Bot Max', 'Bot Ava', 'Bot Zoé', 'Bot Sam'];
@@ -54,6 +56,7 @@ export default {
       startHand(g);
       heroStartStack = g.players[HERO].stack + g.seats[HERO].committed;
       heroFirstPreflopAction = null;
+      mVPIP = false; mPFR = false; mPostBets = 0; mPostCalls = 0;
       heroHoleNotation = handNotation(g.seats[HERO].hole[0], g.seats[HERO].hole[1]);
       render();
       driveBots();
@@ -89,8 +92,14 @@ export default {
 
     function heroAct(act) {
       if (g.toAct !== HERO || g.handOver) return;
-      if (g.street === 'preflop' && heroFirstPreflopAction === null) {
-        heroFirstPreflopAction = act.type;
+      if (g.street === 'preflop') {
+        if (heroFirstPreflopAction === null) heroFirstPreflopAction = act.type;
+        // VPIP = argent mis volontairement (call d'une mise, mise ou relance)
+        if (act.type === 'raise' || act.type === 'bet') { mVPIP = true; mPFR = true; }
+        else if (act.type === 'call') mVPIP = true;
+      } else {
+        if (act.type === 'bet' || act.type === 'raise') mPostBets++;
+        else if (act.type === 'call') mPostCalls++;
       }
       setSeatAction(HERO, act);
       applyAction(g, act);
@@ -101,7 +110,12 @@ export default {
       render();
       const heroEndStack = g.players[HERO].stack;
       const net = heroEndStack - heroStartStack; // en BB (bb=1)
-      recordTableHand(ctx.state, net);
+      const sawShowdown = !!(g.result && g.result.showdown && g.result.hands.some(h => h.index === HERO));
+      const wonShowdown = sawShowdown && g.result.winners.includes(HERO);
+      recordTableMetrics(ctx.state, {
+        net, vpip: mVPIP, pfr: mPFR, sawShowdown, wonShowdown,
+        postBets: mPostBets, postCalls: mPostCalls,
+      });
       renderCoach(net);
     }
 

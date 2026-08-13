@@ -2,7 +2,7 @@
 // home.js — Tableau de bord (accueil)
 // ============================================================
 
-import { RANK_LABELS } from '../core/cards.js';
+import { computeProfile, generateStrategy } from '../core/analysis.js';
 
 export default {
   id: 'home',
@@ -12,6 +12,8 @@ export default {
     const p = ctx.state.preflop;
     const t = ctx.state.table;
     const acc = p.total ? Math.round((p.correct / p.total) * 100) : 0;
+    const strat = generateStrategy(computeProfile(ctx.state));
+    const top = strat.chantiers[0];
 
     const mistakesHTML = p.mistakes.length
       ? p.mistakes.slice(0, 8).map(m => `
@@ -26,6 +28,15 @@ export default {
     root.innerHTML = `
       <h1>👋 Salut — prêt à progresser ?</h1>
       <p class="subtitle">Ton QG d'entraînement poker. Choisis un module et le bot te corrige en temps réel.</p>
+
+      <div class="panel" style="border-left:4px solid var(--gold);cursor:pointer" data-go="strategy">
+        <div class="row" style="align-items:center;gap:10px;margin-bottom:4px">
+          <h2 style="margin:0">📈 Ta priorité du moment</h2>
+          ${top ? '<span class="tag hero">Priorité 1</span>' : ''}
+        </div>
+        <p style="margin:0 0 6px">${top ? '<b>' + top.title + '</b> — ' + top.rule : strat.summary}</p>
+        <button class="btn primary">Voir ma stratégie complète →</button>
+      </div>
 
       <div class="panel">
         <h2>Vue d'ensemble</h2>
