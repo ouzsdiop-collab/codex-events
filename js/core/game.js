@@ -9,10 +9,10 @@ import { evaluate, categoryName } from './evaluator.js';
 export const STREETS = ['preflop', 'flop', 'turn', 'river', 'showdown'];
 
 // player: { id, name, stack, style, isHero }
-export function createGame({ players, sb = 0.5, bb = 1, buttonIndex = 0 }) {
+export function createGame({ players, sb = 0.5, bb = 1, ante = 0, buttonIndex = 0 }) {
   const g = {
     players: players.map(p => ({ ...p })),
-    sb, bb,
+    sb, bb, ante,
     buttonIndex,
     // état de main (rempli par startHand)
     deck: [],
@@ -76,6 +76,14 @@ export function startHand(g) {
   // Distribution
   for (let r = 0; r < 2; r++) {
     for (const s of g.seats) if (s.inHand) s.hole.push(g.deck.pop());
+  }
+
+  // Antes (chaque joueur en jeu poste une ante — argent mort dans le pot)
+  if (g.ante > 0) {
+    for (const s of g.seats) if (s.inHand) postBlind(g, s.index, g.ante);
+    // les antes ne comptent pas comme mise sur la street courante
+    for (const s of g.seats) s.streetCommitted = 0;
+    if (g.pot > 0) g.log(`Antes postées (${round2(g.ante)} chacun)`);
   }
 
   // Positions blindes (heads-up : bouton = SB)
@@ -275,6 +283,20 @@ function endHandUncontested(g) {
 // Calcule et distribue les side pots au showdown.
 function showdown(g) {
   g.street = 'showdown';
+
+  // Retour de la mise non suivie : si un joueur a engagé plus que tous les
+  // autres (ex. blinde non payée par des tapis plus courts), l'excédent lui
+  // est rendu avant de construire les pots — sinon il formerait un side pot
+  // sans éligible et les jetons disparaîtraient.
+  const byCommitted = g.seats.filter(s => s.committed > 0).sort((a, b) => b.committed - a.committed);
+  if (byCommitted.length >= 2 && byCommitted[0].committed > byCommitted[1].committed) {
+    const refund = byCommitted[0].committed - byCommitted[1].committed;
+    byCommitted[0].player.stack += refund;
+    byCommitted[0].committed -= refund;
+    g.pot -= refund;
+    if (refund > 1e-9) g.log(`${byCommitted[0].player.name} récupère sa mise non suivie (${round2(refund)})`);
+  }
+
   const contenders = activeSeats(g);
   // Évalue chaque main
   const scores = {};

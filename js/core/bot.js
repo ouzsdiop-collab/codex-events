@@ -77,11 +77,17 @@ function decidePreflop(g, s, style, acts, toCall) {
 
   if (!facingRaise) {
     // Pot non ouvert (ou seulement blindes) : ouvrir ou fold/check
-    const threshold = OPEN_THRESHOLD[pos] ?? 8;
+    // Tables courtes (3-max) : on ouvre bien plus large.
+    const shortTable = g.players.length <= 3 ? 2.5 : 0;
+    const stackBB = s.player.stack / g.bb;
+    const threshold = (OPEN_THRESHOLD[pos] ?? 8) - shortTable;
     if (score >= threshold) {
       const raise = pick(acts, 'raise') || pick(acts, 'bet');
       if (raise) {
-        const target = clamp(g.bb * 2.5 + g.pot * 0.15, raise.min, raise.max);
+        // Tapis court : privilégier le tapis (shove) plutôt qu'un open standard.
+        const target = stackBB <= 12
+          ? raise.max
+          : clamp(g.bb * 2.3 + g.pot * 0.1, raise.min, raise.max);
         return { type: raise.type, amount: round2(target) };
       }
     }

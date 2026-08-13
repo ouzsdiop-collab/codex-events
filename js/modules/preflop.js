@@ -5,7 +5,7 @@
 
 import { makeDeck, shuffle } from '../core/cards.js';
 import { handNotation, gridHands, parseRange } from '../core/notation.js';
-import { RFI, VS_OPEN, PUSH_FOLD, raiserBucket, pushFoldRangeString, POSITIONS } from '../data/ranges.js';
+import { RFI, RFI_3, RFI_3_POSITIONS, VS_OPEN, raiserBucket, pushFoldRangeString, POSITIONS } from '../data/ranges.js';
 import { recordPreflop } from '../core/storage.js';
 import { cardsHTML, el, pct } from '../ui/render.js';
 
@@ -23,12 +23,14 @@ function dealHero() {
 }
 
 // ---- Génère un scénario selon le mode ----
-function newScenario(mode) {
+function newScenario(mode, tableSize = 6) {
   const hole = dealHero();
   const hand = handNotation(hole[0], hole[1]);
+  const rfiTable = tableSize === 3 ? RFI_3 : RFI;
+  const rfiPositions = tableSize === 3 ? RFI_3_POSITIONS : RFI_POSITIONS;
   if (mode === 'RFI') {
-    const pos = randChoice(RFI_POSITIONS);
-    const range = parseRange(RFI[pos]);
+    const pos = randChoice(rfiPositions);
+    const range = parseRange(rfiTable[pos]);
     return { mode, hole, hand, pos, range, expected: range.has(hand) ? 'open' : 'fold' };
   }
   if (mode === 'VS_OPEN') {
@@ -47,9 +49,10 @@ function newScenario(mode) {
     return { mode, hole, hand, pos: heroPos, raiserPos, bucket, threeBet, call, expected };
   }
   // PUSH_FOLD
-  const pos = randChoice(RFI_POSITIONS);
+  const pfPositions = tableSize === 3 ? ['BTN', 'SB'] : RFI_POSITIONS;
+  const pos = randChoice(pfPositions);
   const stack = randChoice(PF_STACKS);
-  const pf = pushFoldRangeString(pos, stack);
+  const pf = pushFoldRangeString(pos, stack, tableSize);
   const range = parseRange(pf.range);
   return { mode, hole, hand, pos, stack, palier: pf.palier, range, expected: range.has(hand) ? 'shove' : 'fold' };
 }
@@ -146,6 +149,11 @@ export default {
   title: 'Trainer préflop',
   icon: '🎯',
   mount(root, ctx) {
+    const tableSize = ctx.state.settings.tableSize === 3 ? 3 : 6;
+    // En 3-max, le jeu "face à un open" 6-max n'a pas de sens : on masque le mode.
+    const MODES = tableSize === 3
+      ? [['RFI', 'RFI (ouvrir/fold)'], ['PUSH_FOLD', 'Push/Fold (tournoi)']]
+      : [['RFI', 'RFI (ouvrir/fold)'], ['VS_OPEN', 'Face à un open'], ['PUSH_FOLD', 'Push/Fold (tournoi)']];
     let mode = 'RFI';
     let answered = false;
 
@@ -156,12 +164,12 @@ export default {
     }
 
     function render() {
-      cur = newScenario(mode);
+      cur = newScenario(mode, tableSize);
       answered = false;
       root.innerHTML = `
-        <h1>🎯 Trainer ranges préflop</h1>
+        <h1>🎯 Trainer ranges préflop <span class="tag pos" style="vertical-align:middle">${tableSize}-max</span></h1>
         <p class="subtitle">Décide vite et juste. Le bot corrige ta décision face à une range de référence solide.</p>
-        <div class="warnbox">Ranges de <b>référence pédagogiques</b> (proches GTO, simplifiées) — édite-les dans <span class="pill">js/data/ranges.js</span>.</div>
+        <div class="warnbox">Ranges de <b>référence pédagogiques</b> (proches GTO, simplifiées) — édite-les dans <span class="pill">js/data/ranges.js</span>. Change la taille de table dans les réglages (colonne de gauche).</div>
 
         <div class="row" style="margin-bottom:18px">
           <div class="mode-tabs row"></div>
@@ -196,7 +204,7 @@ export default {
 
       // Tabs de mode
       const tabs = root.querySelector('.mode-tabs');
-      for (const [m, lbl] of [['RFI', 'RFI (ouvrir/fold)'], ['VS_OPEN', 'Face à un open'], ['PUSH_FOLD', 'Push/Fold (tournoi)']]) {
+      for (const [m, lbl] of MODES) {
         const b = el(`<button class="btn ${m === mode ? 'primary' : 'ghost'}">${lbl}</button>`);
         b.onclick = () => { mode = m; render(); };
         tabs.appendChild(b);
