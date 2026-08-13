@@ -53,6 +53,17 @@ Entre une situation (ta main, le board, le pot, la mise à payer, le nombre d'ad
 ### 📈 Ma stratégie
 Le module qui **analyse ton jeu au fil des sessions** et fait évoluer un plan personnalisé. À partir de tout ce que tu as joué, il calcule ton **profil** (précision préflop, VPIP, PFR, passivité, WTSD, agressivité postflop), classe ton **style** (TAG / LAG / nit / station), détecte la **nature de tes fuites** (trop large / serré / passif / agressif) et en déduit un **plan priorisé** (2–3 chantiers concrets). Le diagnostic devient plus fiable à mesure que l'échantillon grandit (les métriques restent « — » tant qu'il y a trop peu de données). On peaufine les repères ensemble au fur et à mesure.
 
+## 🎛️ Formats & réglages (colonne de gauche)
+
+Pensé pour le **tournoi à élimination**, jouable en **3-max** ou **6-max** :
+
+- **Table** : 3-max ou 6-max. Le trainer, la table et le diagnostic s'adaptent automatiquement (les ranges 3-max sont bien plus larges, et les bandes de référence du diagnostic changent — un VPIP « normal » n'est pas le même à 3 ou à 6).
+- **Tapis de départ** : de 15 à 100 BB, pour driller le jeu court typique des tournois.
+- **Antes** : aucune, 1/8 ou 1/4 BB.
+- **Style des bots** : TAG / LAG / nit / calling station.
+
+En 3-max, le mode « face à un open » est masqué (peu pertinent à trois) au profit de **RFI** et **push/fold**, qui utilisent des charts 3-max dédiés.
+
 ## 🛠️ Personnaliser
 
 - **Les ranges** de référence sont dans [`js/data/ranges.js`](js/data/ranges.js) — édite-les librement (notation standard : `22+, ATs+, KJo+, T9s`…). Ce sont des ranges pédagogiques proches GTO, volontairement simplifiées.

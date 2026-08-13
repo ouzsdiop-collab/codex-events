@@ -50,6 +50,32 @@ export function raiserBucket(pos) {
   return (pos === 'UTG' || pos === 'HJ') ? 'early' : 'late';
 }
 
+// ---------- RFI 3-max (tables courtes) ----------
+// En 3-max il n'y a que BTN / SB / BB. Les ranges d'ouverture sont bien
+// plus larges qu'en 6-max. (Références pédagogiques, éditables.)
+export const RFI_3 = {
+  BTN: '22+, A2s+, K2s+, Q4s+, J6s+, T6s+, 96s+, 85s+, 74s+, 64s+, 53s+, 43s, A2o+, K6o+, Q8o+, J8o+, T8o+, 98o, 87o, 76o',
+  SB:  '22+, A2s+, K4s+, Q6s+, J7s+, T7s+, 96s+, 86s+, 75s+, 65s, 54s, A2o+, K8o+, Q9o+, J9o+, T9o, 98o',
+};
+export const RFI_3_POSITIONS = ['BTN', 'SB'];
+
+// ---------- Push / Fold 3-max ----------
+// Shove non ouvert depuis BTN ou SB, tapis effectif court. Plus large qu'en 6-max.
+export const PUSH_FOLD_3 = {
+  BTN: {
+    8:  '22+, A2s+, A2o+, K2s+, K5o+, Q5s+, Q8o+, J7s+, J9o+, T7s+, T9o, 96s+, 86s+, 75s+, 65s, 54s',
+    10: '22+, A2s+, A2o+, K2s+, K7o+, Q7s+, Q9o+, J8s+, J9o+, T8s+, 98s, 97s+, 87s',
+    12: '22+, A2s+, A4o+, K5s+, K8o+, Q8s+, QTo+, J8s+, T8s+, 98s',
+    15: '22+, A2s+, A7o+, K8s+, KTo+, Q9s+, QJo, J9s+, T9s',
+  },
+  SB: {
+    8:  '22+, A2s+, A2o+, K2s+, K4o+, Q4s+, Q7o+, J6s+, J8o+, T6s+, T9o, 95s+, 85s+, 74s+, 64s+, 54s',
+    10: '22+, A2s+, A2o+, K2s+, K6o+, Q6s+, Q8o+, J7s+, J9o+, T7s+, 97s+, 86s+, 76s, 65s',
+    12: '22+, A2s+, A3o+, K4s+, K8o+, Q7s+, Q9o+, J8s+, T8s+, 98s',
+    15: '22+, A2s+, A6o+, K7s+, K9o+, Q8s+, QTo+, J9s+, T9s',
+  },
+};
+
 // ---------- Push / Fold tournoi (tapis court, pot non ouvert) ----------
 // Range de tapis (shove) par position et par tapis effectif en BB.
 // Basé sur des charts Nash simplifiées. Sous ~ ces tapis, on shove ou on fold.
@@ -87,8 +113,8 @@ export const PUSH_FOLD = {
 };
 
 // Trouve le tapis "seuil" applicable pour une profondeur donnée (arrondi au palier <=).
-export function pushFoldRangeString(pos, stackBB) {
-  const table = PUSH_FOLD[pos];
+export function pushFoldRangeString(pos, stackBB, tableSize = 6) {
+  const table = (tableSize === 3 ? PUSH_FOLD_3 : PUSH_FOLD)[pos];
   if (!table) return null;
   const paliers = Object.keys(table).map(Number).sort((a, b) => a - b);
   let chosen = paliers[0];

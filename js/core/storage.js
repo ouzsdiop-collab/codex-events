@@ -26,9 +26,11 @@ const DEFAULT = {
   },
   history: [],         // snapshots { ts, pfAcc, spots, hands, netBB }
   settings: {
-    heroSeat: 'CO',
     botStyle: 'TAG',
-    tableSize: 6,
+    gameType: 'tournament',  // 'tournament' | 'cash'
+    tableSize: 6,            // 3 ou 6
+    startStackBB: 40,        // profondeur de tapis en BB
+    ante: 0.125,             // ante par joueur en BB (0 = aucune)
   },
 };
 

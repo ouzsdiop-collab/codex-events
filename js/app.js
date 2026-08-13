@@ -43,27 +43,47 @@ function buildSidebar() {
 
   const footer = document.createElement('div');
   footer.className = 'sidebar-footer';
+  const s = state.settings;
+  const opt = (v, cur, lbl) => `<option value="${v}" ${String(cur) === String(v) ? 'selected' : ''}>${lbl}</option>`;
   footer.innerHTML = `
+    <div style="font-weight:700;color:var(--text);margin-bottom:6px">⚙️ Format de jeu</div>
+    <label class="field" style="margin-bottom:8px">Table
+      <select id="tableSize">
+        ${opt(6, s.tableSize, '6-max')}${opt(3, s.tableSize, '3-max')}
+      </select>
+    </label>
+    <label class="field" style="margin-bottom:8px">Tapis de départ
+      <select id="startStackBB">
+        ${[15, 25, 40, 60, 100].map(v => opt(v, s.startStackBB, v + ' BB')).join('')}
+      </select>
+    </label>
+    <label class="field" style="margin-bottom:8px">Antes
+      <select id="ante">
+        ${opt(0, s.ante, 'Aucune')}${opt(0.125, s.ante, '1/8 BB')}${opt(0.25, s.ante, '1/4 BB')}
+      </select>
+    </label>
     <label class="field" style="margin-bottom:8px">Style des bots
       <select id="botStyle">
-        ${Object.entries(STYLES).map(([k, v]) => `<option value="${k}" ${state.settings.botStyle === k ? 'selected' : ''}>${v.label}</option>`).join('')}
+        ${Object.entries(STYLES).map(([k, v]) => opt(k, state.settings.botStyle, v.label)).join('')}
       </select>
     </label>
     <button class="btn ghost" id="reset" style="width:100%">Réinitialiser mes stats</button>
-    <div style="margin-top:10px">Données stockées localement (localStorage).</div>
+    <div style="margin-top:10px">Tournoi à élimination · données stockées localement.</div>
   `;
   bar.appendChild(footer);
 
-  footer.querySelector('#botStyle').onchange = (e) => {
-    state.settings.botStyle = e.target.value;
+  const applySetting = (key, val, isNum) => {
+    state.settings[key] = isNum ? Number(val) : val;
     saveState(state);
-    if (current === 'table') nav('table');
+    // Rerender le module courant pour prendre en compte le nouveau format
+    if (['table', 'preflop', 'strategy', 'home'].includes(current)) nav(current);
   };
+  footer.querySelector('#tableSize').onchange = e => applySetting('tableSize', e.target.value, true);
+  footer.querySelector('#startStackBB').onchange = e => applySetting('startStackBB', e.target.value, true);
+  footer.querySelector('#ante').onchange = e => applySetting('ante', e.target.value, true);
+  footer.querySelector('#botStyle').onchange = e => applySetting('botStyle', e.target.value, false);
   footer.querySelector('#reset').onclick = () => {
-    if (confirm('Effacer toutes tes stats et ta progression ?')) {
-      resetState();
-      location.reload();
-    }
+    if (confirm('Effacer toutes tes stats et ta progression ?')) { resetState(); location.reload(); }
   };
 }
 

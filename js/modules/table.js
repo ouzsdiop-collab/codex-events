@@ -6,13 +6,13 @@
 import { createGame, startHand, legalActions, applyAction, moveButton } from '../core/game.js';
 import { decideBot, STYLES, chenScore } from '../core/bot.js';
 import { handNotation, parseRange } from '../core/notation.js';
-import { RFI } from '../data/ranges.js';
+import { RFI, RFI_3 } from '../data/ranges.js';
 import { equityMonteCarlo } from '../core/equity.js';
 import { recordTableMetrics } from '../core/storage.js';
 import { cardsHTML, cardBackHTML, el, pct } from '../ui/render.js';
 
-// Ancrages écran (en %) pour 6 sièges — le héros est toujours en bas au centre.
-const ANCHORS = [
+// Ancrages écran (en %), héros toujours en bas au centre.
+const ANCHORS_6 = [
   { left: 50, top: 92 },  // 0 héros
   { left: 12, top: 72 },  // 1
   { left: 6,  top: 30 },  // 2
@@ -20,38 +20,50 @@ const ANCHORS = [
   { left: 94, top: 30 },  // 4
   { left: 88, top: 72 },  // 5
 ];
+const ANCHORS_3 = [
+  { left: 50, top: 90 },  // 0 héros
+  { left: 10, top: 26 },  // 1
+  { left: 90, top: 26 },  // 2
+];
 
 const POS_NAMES_6 = { 0: 'BTN', 1: 'SB', 2: 'BB', 3: 'UTG', 4: 'HJ', 5: 'CO' };
+const POS_NAMES_3 = { 0: 'BTN', 1: 'SB', 2: 'BB' };
+const ALL_NAMES = ['Toi', 'Bot Léo', 'Bot Max', 'Bot Ava', 'Bot Zoé', 'Bot Sam'];
 
 export default {
   id: 'table',
   title: 'Table vs bots',
   icon: '🃏',
   mount(root, ctx) {
-    const style = ctx.state.settings.botStyle || 'TAG';
+    const st = ctx.state.settings;
+    const style = st.botStyle || 'TAG';
+    const SIZE = st.tableSize === 3 ? 3 : 6;
+    const START_STACK = st.startStackBB || 40;
+    const ANTE = st.ante || 0;
+    const ANCHORS = SIZE === 3 ? ANCHORS_3 : ANCHORS_6;
+    const POS_NAMES = SIZE === 3 ? POS_NAMES_3 : POS_NAMES_6;
     const HERO = 0;
-    let heroStartStack = 100;
+    let heroStartStack = START_STACK;
     let heroFirstPreflopAction = null; // pour l'analyse
     let heroHoleNotation = null;
     // Trackers de métriques pour la main courante
     let mVPIP = false, mPFR = false, mPostBets = 0, mPostCalls = 0;
 
-    // Construit les joueurs (héros + 5 bots)
-    const names = ['Toi', 'Bot Léo', 'Bot Max', 'Bot Ava', 'Bot Zoé', 'Bot Sam'];
-    const players = names.map((name, i) => ({
-      id: i, name, stack: 100, isHero: i === HERO,
+    // Construit les joueurs (héros + bots) selon la taille de table
+    const players = ALL_NAMES.slice(0, SIZE).map((name, i) => ({
+      id: i, name, stack: START_STACK, isHero: i === HERO,
       style: i === HERO ? null : style,
     }));
-    let g = createGame({ players, sb: 0.5, bb: 1, buttonIndex: Math.floor(Math.random() * 6) });
+    let g = createGame({ players, sb: 0.5, bb: 1, ante: ANTE, buttonIndex: Math.floor(Math.random() * SIZE) });
 
     function heroPos() {
-      const dist = ((HERO - g.buttonIndex) + 6) % 6;
-      return POS_NAMES_6[dist];
+      const dist = ((HERO - g.buttonIndex) + SIZE) % SIZE;
+      return POS_NAMES[dist];
     }
 
     function beginHand() {
       // relance les tapis vidés (mode entraînement, pas de bust-out)
-      for (const p of g.players) if (p.stack <= 0) p.stack = 100;
+      for (const p of g.players) if (p.stack <= 0) p.stack = START_STACK;
       moveButtonIfNeeded();
       startHand(g);
       heroStartStack = g.players[HERO].stack + g.seats[HERO].committed;
@@ -123,15 +135,15 @@ export default {
     function render() {
       const potStr = (Math.round(g.pot * 100) / 100);
       let seatsHTML = '';
-      for (let i = 0; i < 6; i++) {
-        const scr = ANCHORS[((i - HERO) + 6) % 6]; // héros -> anchor 0
+      for (let i = 0; i < SIZE; i++) {
+        const scr = ANCHORS[((i - HERO) + SIZE) % SIZE]; // héros -> anchor 0
         const s = g.seats[i];
         const p = g.players[i];
         const isBtn = g.buttonIndex === i;
         const acting = g.toAct === i && !g.handOver;
         const folded = s && s.folded;
-        const dist = ((i - g.buttonIndex) + 6) % 6;
-        const posName = POS_NAMES_6[dist];
+        const dist = ((i - g.buttonIndex) + SIZE) % SIZE;
+        const posName = POS_NAMES[dist];
         let cardsPart = '';
         if (s && s.inHand) {
           if (i === HERO || g.handOver) cardsPart = cardsHTML(s.hole, 'xs');
@@ -155,8 +167,8 @@ export default {
       const boardHTML = g.board.length ? cardsHTML(g.board, 'sm') : '<div class="hint">— pré-flop —</div>';
 
       root.innerHTML = `
-        <h1>🃏 Table 6-max vs bots</h1>
-        <p class="subtitle">Tu es à <span class="tag hero">${heroPos()}</span>. Bots en style <b>${STYLES[style].label}</b>. Le coach t'analyse après chaque main.</p>
+        <h1>🃏 Table ${SIZE}-max vs bots</h1>
+        <p class="subtitle">Tu es à <span class="tag hero">${heroPos()}</span> · tapis ${START_STACK} BB${ANTE > 0 ? ` · antes ${Math.round(ANTE*1000)/1000} BB` : ''} · bots <b>${STYLES[style].label}</b>. Le coach t'analyse après chaque main.</p>
 
         <div class="felt" style="position:relative">
           <div class="board-area">
@@ -282,8 +294,9 @@ export default {
 
       // 1) Analyse préflop : première action du héros vs range de référence
       const pos = heroPos();
-      if (pos !== 'BB' && RFI[pos]) {
-        const inRange = parseRange(RFI[pos]).has(heroHoleNotation);
+      const rfiSet = (SIZE === 3 ? RFI_3 : RFI)[pos];
+      if (pos !== 'BB' && rfiSet) {
+        const inRange = parseRange(rfiSet).has(heroHoleNotation);
         const acted = heroFirstPreflopAction;
         if (acted) {
           const opened = (acted === 'bet' || acted === 'raise');
